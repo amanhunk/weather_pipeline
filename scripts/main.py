@@ -2,6 +2,7 @@
 import requests
 import pandas as pd
 from pathlib import Path
+from google.cloud import bigquery
 
 # Project paths
 PROJECT_DIR = Path(__file__).resolve().parent.parent
@@ -154,6 +155,27 @@ def main():
     # 9. Save the processed dataset locally
     merged_df.to_csv(OUTPUT_FILE, index=False)
 
+    # 7. Upload the final dataset to BigQuery
+    client = bigquery.Client(project="refined-outlet-456506-q9")
+
+    table_id = (
+        "refined-outlet-456506-q9."
+        "global_weather_data.current_weather_stats"
+    )
+
+    job_config = bigquery.LoadJobConfig(
+        write_disposition=bigquery.WriteDisposition.WRITE_TRUNCATE
+    )
+
+    job = client.load_table_from_dataframe(
+        merged_df,
+        table_id,
+        job_config=job_config
+    )
+    job.result()
+
+    table = client.get_table(table_id)
+    print(f"\nUploaded {table.num_rows} rows to {table.full_table_id}")
     print("\nMerged weather and population data:")
     print(merged_df.head(10).to_string(index=False))
 
